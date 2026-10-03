@@ -1,0 +1,460 @@
+// Prisma Schema for IIFT Delhi Placement Committee Management System (PlaceComm)
+// Optimized for high-frequency placement operational queries, normalized relationships, and audit compliance.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  PLACEMENT_COORDINATOR
+  ADMIN
+  VIEWER
+}
+
+enum ProgramType {
+  MBA_IB
+  MBA_BA
+}
+
+enum CampusType {
+  DELHI
+}
+
+enum SpecializationType {
+  FINANCE
+  MARKETING
+  STRATEGY_CONSULTING
+  TRADE_LOGISTICS
+  IT_ANALYTICS
+  OPERATIONS_SUPPLY_CHAIN
+}
+
+enum PlacementStatus {
+  UNPLACED
+  SHORTLISTED
+  INTERVIEWING
+  PLACED
+  OPTED_OUT
+}
+
+enum CompanyStatus {
+  PROSPECT
+  CONTACTED
+  INTERESTED
+  DISCUSSION
+  NEGOTIATION
+  CONFIRMED
+  SCHEDULE_FINALIZED
+  HIRING_ACTIVE
+  PROCESS_COMPLETED
+  OFFER_RELEASED
+  CONVERTED
+  ON_HOLD
+  DECLINED
+}
+
+enum CycleType {
+  SUMMER
+  FINAL
+  BOTH
+}
+
+enum DriveStatus {
+  DRAFT
+  APPLICATIONS_OPEN
+  SHORTLISTING
+  INTERVIEWS_SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum FunnelStage {
+  ELIGIBLE
+  APPLIED
+  SHORTLISTED
+  INTERVIEW_1
+  INTERVIEW_2
+  FINAL_ROUND
+  SELECTED
+  OFFER_RECEIVED
+  ACCEPTED
+  PLACED
+  REJECTED
+  WITHDRAWN
+}
+
+enum InterviewRound {
+  GD
+  TECHNICAL_1
+  TECHNICAL_2
+  CASE_INTERVIEW
+  HR
+  PARTNER_ROUND
+  FINAL
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  RESCHEDULED
+  NO_SHOW
+}
+
+enum InterviewResult {
+  PENDING
+  SELECTED
+  REJECTED
+  WAITLISTED
+}
+
+enum OfferStatus {
+  PENDING
+  RELEASED
+  ACCEPTED
+  DECLINED
+  WITHDRAWN
+}
+
+enum OfferType {
+  SUMMER_INTERNSHIP
+  FINAL_PLACEMENT
+  PPO
+}
+
+enum PriorityLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum FollowUpStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  name         String
+  role         UserRole      @default(PLACEMENT_COORDINATOR)
+  rollNumber   String?
+  phone        String?
+  avatar       String?
+  title        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  assignedCompanies Company[]
+  assignedFollowUps FollowUp[]
+  activities        CompanyActivity[]
+  auditLogs         AuditLog[]
+
+  @@index([role])
+  @@index([email])
+}
+
+model Student {
+  id               String             @id @default(uuid())
+  rollNumber       String             @unique
+  name             String
+  email            String             @unique
+  phone            String
+  gender           String             @default("Male")
+  program          ProgramType
+  campus           CampusType         @default(DELHI)
+  batch            String             // e.g. "2024-26"
+  specialization   SpecializationType
+  workExpMonths    Int                @default(0)
+  ugDegree         String
+  ugCollege        String
+  cgpa             Decimal            @db.Decimal(4, 2)
+  tenthPercent     Decimal            @db.Decimal(5, 2)
+  twelfthPercent   Decimal            @db.Decimal(5, 2)
+  isEligible       Boolean            @default(true)
+  skills           String[]
+  cvUrl            String?
+  resumeSummary    String?
+  
+  // Summer placement
+  summerStatus     PlacementStatus    @default(UNPLACED)
+  summerCompanyId  String?
+  summerCompany    Company?           @relation("StudentSummerCompany", fields: [summerCompanyId], references: [id])
+  summerStipend    Decimal?           @db.Decimal(10, 2)
+  summerPPO        Boolean            @default(false)
+  
+  // Final placement
+  finalStatus      PlacementStatus    @default(UNPLACED)
+  finalCompanyId   String?
+  finalCompany     Company?           @relation("StudentFinalCompany", fields: [finalCompanyId], references: [id])
+  finalCTC         Decimal?           @db.Decimal(6, 2) // In LPA
+  finalFixed       Decimal?           @db.Decimal(6, 2)
+  finalVariable    Decimal?           @db.Decimal(6, 2)
+  finalJoiningBonus Decimal?          @db.Decimal(6, 2)
+
+  // Counters (cached for instantaneous read performance)
+  shortlistsCount  Int                @default(0)
+  interviewsCount  Int                @default(0)
+  offersCount      Int                @default(0)
+  
+  notes            String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  applications     StudentApplication[]
+  shortlists       ShortlistRecord[]
+  interviews       Interview[]
+  offers           Offer[]
+
+  @@index([batch, program])
+  @@index([rollNumber])
+  @@index([finalStatus])
+  @@index([summerStatus])
+  @@index([specialization])
+  @@index([isEligible])
+  @@index([cgpa])
+}
+
+model Company {
+  id               String             @id @default(uuid())
+  name             String             @unique
+  industry         String
+  companyType      String             @default("MNC")
+  website          String?
+  location         String?
+  pcOwnerId        String?
+  pcOwner          User?              @relation(fields: [pcOwnerId], references: [id])
+  recruitmentType  CycleType          @default(BOTH)
+  status           CompanyStatus      @default(PROSPECT)
+  expectedVisitDate DateTime?
+  hiringIntent     String?
+  notes            String?
+  historicalHires  Int                @default(0)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  hrContacts       HRContact[]
+  recruitmentDrives RecruitmentDrive[]
+  followUps        FollowUp[]
+  activities       CompanyActivity[]
+  summerStudents   Student[]          @relation("StudentSummerCompany")
+  finalStudents    Student[]          @relation("StudentFinalCompany")
+  offers           Offer[]
+
+  @@index([status])
+  @@index([industry])
+  @@index([recruitmentType])
+  @@index([expectedVisitDate])
+}
+
+model HRContact {
+  id               String       @id @default(uuid())
+  companyId        String
+  company          Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name             String
+  designation      String
+  email            String
+  phone            String
+  alternatePhone   String?
+  linkedin         String?
+  preferredChannel String       @default("Email")
+  relationshipOwner String?
+  lastContactDate  DateTime?
+  nextFollowUpDate DateTime?
+  isPrimary        Boolean      @default(false)
+  notes            String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  followUps        FollowUp[]
+
+  @@index([companyId])
+  @@index([email])
+}
+
+model RecruitmentDrive {
+  id                  String             @id @default(uuid())
+  companyId           String
+  company             Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  cycle               String             // e.g. "Final Placement 2026"
+  cycleType           CycleType          @default(FINAL)
+  jobProfile          String
+  jobDescription      String?
+  expectedHires       Int                @default(1)
+  ctcLpa              Decimal?           @db.Decimal(6, 2)
+  stipendPerMonth     Decimal?           @db.Decimal(10, 2)
+  fixedLpa            Decimal?           @db.Decimal(6, 2)
+  variableLpa         Decimal?           @db.Decimal(6, 2)
+  joiningBonusLpa     Decimal?           @db.Decimal(6, 2)
+  ppoOpportunity      Boolean            @default(false)
+  minWorkExpMonths    Int?
+  maxWorkExpMonths    Int?
+  allowedPrograms     String[]
+  allowedSpecializations String[]
+  minCgpa             Decimal            @default(0.0) @db.Decimal(4, 2)
+  applicationDeadline DateTime?
+  shortlistDate       DateTime?
+  interviewDate       DateTime?
+  offerDate           DateTime?
+  status              DriveStatus        @default(DRAFT)
+  ownerId             String?
+  ownerName           String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  applications        StudentApplication[]
+  shortlists          ShortlistRecord[]
+  interviews          Interview[]
+  offers              Offer[]
+
+  @@index([cycle, cycleType])
+  @@index([companyId])
+  @@index([status])
+  @@index([interviewDate])
+}
+
+model StudentApplication {
+  id          String           @id @default(uuid())
+  driveId     String
+  drive       RecruitmentDrive @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  studentId   String
+  student     Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  stage       FunnelStage      @default(ELIGIBLE)
+  appliedAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  notes       String?
+
+  @@unique([driveId, studentId])
+  @@index([driveId, stage])
+  @@index([studentId])
+}
+
+model ShortlistRecord {
+  id                    String           @id @default(uuid())
+  driveId               String
+  drive                 RecruitmentDrive @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  studentId             String
+  student               Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  roundName             String           @default("Round 1")
+  importedBy            String?
+  shortlistedAt         DateTime         @default(now())
+
+  @@unique([driveId, studentId, roundName])
+  @@index([driveId])
+  @@index([studentId])
+}
+
+model Interview {
+  id              String           @id @default(uuid())
+  driveId         String
+  drive           RecruitmentDrive @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  round           InterviewRound   @default(TECHNICAL_1)
+  date            DateTime         @db.Date
+  startTime       String           // HH:mm format
+  endTime         String
+  mode            String           @default("Online")
+  venueOrLink     String
+  interviewerName String?
+  status          InterviewStatus  @default(SCHEDULED)
+  result          InterviewResult  @default(PENDING)
+  feedback        String?
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([date, status])
+  @@index([driveId])
+  @@index([studentId])
+}
+
+model Offer {
+  id              String           @id @default(uuid())
+  driveId         String
+  drive           RecruitmentDrive @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  companyId       String
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  profile         String
+  offerType       OfferType        @default(FINAL_PLACEMENT)
+  offerDate       DateTime         @default(now())
+  ctcLpa          Decimal?         @db.Decimal(6, 2)
+  stipendPerMonth Decimal?         @db.Decimal(10, 2)
+  fixedLpa        Decimal?         @db.Decimal(6, 2)
+  variableLpa     Decimal?         @db.Decimal(6, 2)
+  joiningBonusLpa Decimal?         @db.Decimal(6, 2)
+  ppoOpportunity  Boolean          @default(false)
+  status          OfferStatus      @default(RELEASED)
+  acceptedAt      DateTime?
+  validTill       DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([studentId, status])
+  @@index([companyId])
+  @@index([driveId])
+}
+
+model FollowUp {
+  id              String         @id @default(uuid())
+  companyId       String
+  company         Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  hrContactId     String?
+  hrContact       HRContact?     @relation(fields: [hrContactId], references: [id], onDelete: SetNull)
+  pcOwnerId       String
+  pcOwner         User           @relation(fields: [pcOwnerId], references: [id])
+  priority        PriorityLevel  @default(MEDIUM)
+  dueDate         DateTime       @db.Date
+  status          FollowUpStatus @default(PENDING)
+  actionType      String         @default("Call")
+  notes           String
+  lastContactDate DateTime?      @db.Date
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([dueDate, status])
+  @@index([pcOwnerId])
+  @@index([companyId])
+}
+
+model CompanyActivity {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  actorId     String
+  actor       User     @relation(fields: [actorId], references: [id])
+  type        String
+  title       String
+  outcome     String?
+  notes       String
+  timestamp   DateTime @default(now())
+
+  @@index([companyId, timestamp])
+  @@index([actorId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String
+  details   String
+  timestamp DateTime @default(now())
+
+  @@index([entity, timestamp])
+  @@index([userId])
+}

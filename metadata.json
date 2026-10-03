@@ -1,0 +1,6 @@
+{
+  "name": "IIFT PlaceComm - Placement Committee Operations System",
+  "description": "Enterprise-grade placement operations management platform for IIFT Delhi: student master database, company outreach CRM, automated interview scheduling, shortlists, offers, and executive analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
