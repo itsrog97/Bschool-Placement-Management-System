@@ -9,7 +9,8 @@ import {
   CompanyActivity,
   AuditLog,
   User,
-  ShortlistRecord
+  ShortlistRecord,
+  CoordinatorUser
 } from '../types';
 
 export const CURRENT_USERS: User[] = [
@@ -18,45 +19,248 @@ export const CURRENT_USERS: User[] = [
     name: 'Aditya Sheetal',
     email: 'adityasheetal.0092@gmail.com',
     role: 'SUPER_ADMIN',
+    pcRole: 'Super Admin',
     rollNumber: 'IB-2024-042',
     phone: '+91 98112 34567',
     title: 'Senior Placement Coordinator (Strategy & Tech)',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'
+    isGoogleLinked: true,
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
+    permissions: {
+      canManageUsers: true,
+      canExportData: true,
+      canManageCompanies: true,
+      canModifyStudents: true,
+      canReleaseOffers: true,
+      canAccessAuditLogs: true
+    }
   },
   {
     id: 'user-2',
     name: 'Tanya Verma',
     email: 'tanya.verma_ib24@iift.edu',
     role: 'PLACEMENT_COORDINATOR',
+    pcRole: 'Placement Secretary',
     rollNumber: 'IB-2024-089',
     phone: '+91 98765 43210',
     title: 'Corporate Relations Coordinator (FMCG & Trade)',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80'
+    isGoogleLinked: true,
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80',
+    permissions: {
+      canManageUsers: true,
+      canExportData: true,
+      canManageCompanies: true,
+      canModifyStudents: true,
+      canReleaseOffers: true,
+      canAccessAuditLogs: true
+    }
   },
   {
     id: 'user-3',
     name: 'Rahul Mehta',
     email: 'rahul.mehta_ba24@iift.edu',
     role: 'PLACEMENT_COORDINATOR',
+    pcRole: 'Sector Lead - BFSI',
     rollNumber: 'BA-2024-015',
     phone: '+91 91234 56780',
     title: 'Corporate Relations Coordinator (BFSI & Analytics)',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80'
+    isGoogleLinked: true,
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80',
+    permissions: {
+      canManageUsers: false,
+      canExportData: true,
+      canManageCompanies: true,
+      canModifyStudents: true,
+      canReleaseOffers: false,
+      canAccessAuditLogs: true
+    }
   },
   {
     id: 'user-4',
     name: 'Dr. R. K. Wadhwa',
     email: 'head.placements@iift.edu',
     role: 'ADMIN',
+    pcRole: 'Super Admin',
     phone: '+91 11 3914 7200',
     title: 'Professor & Chairperson, Placements',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80',
+    isGoogleLinked: false,
+    permissions: {
+      canManageUsers: true,
+      canExportData: true,
+      canManageCompanies: true,
+      canModifyStudents: true,
+      canReleaseOffers: true,
+      canAccessAuditLogs: true
+    }
   },
   {
     id: 'user-5',
     name: 'Auditor & Observer',
     email: 'audit.placements@iift.edu',
     role: 'VIEWER',
+    pcRole: 'Junior Coordinator',
     title: 'Institutional Placement Observer',
+    permissions: {
+      canManageUsers: false,
+      canExportData: false,
+      canManageCompanies: false,
+      canModifyStudents: false,
+      canReleaseOffers: false,
+      canAccessAuditLogs: false
+    }
+  }
+];
+
+export const INITIAL_COORDINATORS: CoordinatorUser[] = [
+  {
+    id: 'user-1',
+    name: 'Aditya Sheetal',
+    email: 'adityasheetal.0092@gmail.com',
+    phone: '+91 98112 34567',
+    role: 'Super Admin',
+    systemRole: 'SUPER_ADMIN',
+    program: 'MBA-IB',
+    batch: '2024-26',
+    sector: 'Strategy & Consulting / Tech',
+    assignedCompaniesCount: 8,
+    status: 'Active',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
+    isGoogleLinked: true,
+    createdAt: '2026-08-01T09:00:00Z',
+    lastLogin: '2026-10-03T18:30:00Z',
+    permissions: {
+      canManageUsers: true,
+      canExportData: true,
+      canManageCompanies: true,
+      canModifyStudents: true,
+      canReleaseOffers: true,
+      canAccessAuditLogs: true
+    }
+  },
+  {
+    id: 'user-2',
+    name: 'Tanya Verma',
+    email: 'tanya.verma_ib24@iift.edu',
+    phone: '+91 98765 43210',
+    role: 'Placement Secretary',
+    systemRole: 'ADMIN',
+    program: 'MBA-IB',
+    batch: '2024-26',
+    sector: 'FMCG & Consumer Goods',
+    assignedCompaniesCount: 6,
+    status: 'Active',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80',
+    isGoogleLinked: true,
+    createdAt: '2026-08-01T09:00:00Z',
+    lastLogin: '2026-10-03T17:15:00Z',
+    permissions: {
+      canManageUsers: true,
+      canExportData: true,
+      canManageCompanies: true,
+      canModifyStudents: true,
+      canReleaseOffers: true,
+      canAccessAuditLogs: true
+    }
+  },
+  {
+    id: 'user-3',
+    name: 'Rahul Mehta',
+    email: 'rahul.mehta_ba24@iift.edu',
+    phone: '+91 91234 56780',
+    role: 'Sector Lead - BFSI',
+    systemRole: 'PLACEMENT_COORDINATOR',
+    program: 'MBA-BA',
+    batch: '2024-26',
+    sector: 'Investment Banking & Markets',
+    assignedCompaniesCount: 5,
+    status: 'Active',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80',
+    isGoogleLinked: true,
+    createdAt: '2026-08-01T09:00:00Z',
+    lastLogin: '2026-10-02T19:40:00Z',
+    permissions: {
+      canManageUsers: false,
+      canExportData: true,
+      canManageCompanies: true,
+      canModifyStudents: true,
+      canReleaseOffers: false,
+      canAccessAuditLogs: true
+    }
+  },
+  {
+    id: 'user-4',
+    name: 'Dr. R. K. Wadhwa',
+    email: 'head.placements@iift.edu',
+    phone: '+91 11 3914 7200',
+    role: 'Super Admin',
+    systemRole: 'SUPER_ADMIN',
+    program: 'MBA-IB',
+    batch: '2024-26',
+    sector: 'Executive Chairperson',
+    assignedCompaniesCount: 16,
+    status: 'Active',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80',
+    isGoogleLinked: false,
+    createdAt: '2026-07-15T09:00:00Z',
+    lastLogin: '2026-10-01T11:00:00Z',
+    permissions: {
+      canManageUsers: true,
+      canExportData: true,
+      canManageCompanies: true,
+      canModifyStudents: true,
+      canReleaseOffers: true,
+      canAccessAuditLogs: true
+    }
+  },
+  {
+    id: 'user-5',
+    name: 'Priya Sundaram',
+    email: 'priya.sundaram_ib25@iift.edu',
+    phone: '+91 99401 22334',
+    role: 'Sector Lead - Consulting',
+    systemRole: 'PLACEMENT_COORDINATOR',
+    program: 'MBA-IB',
+    batch: '2025-27',
+    sector: 'Strategy & Management Consulting',
+    assignedCompaniesCount: 4,
+    status: 'Active',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80',
+    isGoogleLinked: true,
+    createdAt: '2026-08-20T10:00:00Z',
+    lastLogin: '2026-10-03T14:10:00Z',
+    permissions: {
+      canManageUsers: false,
+      canExportData: true,
+      canManageCompanies: true,
+      canModifyStudents: true,
+      canReleaseOffers: false,
+      canAccessAuditLogs: true
+    }
+  },
+  {
+    id: 'user-6',
+    name: 'Aniket Sen',
+    email: 'aniket.sen_ba25@iift.edu',
+    phone: '+91 98300 77889',
+    role: 'Sector Lead - Tech & Product',
+    systemRole: 'PLACEMENT_COORDINATOR',
+    program: 'MBA-BA',
+    batch: '2025-27',
+    sector: 'Cloud & Tech Analytics',
+    assignedCompaniesCount: 4,
+    status: 'Active',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80',
+    isGoogleLinked: false,
+    createdAt: '2026-08-22T11:00:00Z',
+    lastLogin: '2026-10-02T16:20:00Z',
+    permissions: {
+      canManageUsers: false,
+      canExportData: true,
+      canManageCompanies: true,
+      canModifyStudents: true,
+      canReleaseOffers: false,
+      canAccessAuditLogs: false
+    }
   }
 ];
 

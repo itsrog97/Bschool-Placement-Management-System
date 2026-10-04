@@ -19,8 +19,10 @@ import { HRContactsPage } from './pages/HRContactsPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { ImportEnginePage } from './pages/ImportEnginePage';
+import { AdminPanelPage } from './pages/AdminPanelPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { AuthModal } from './components/AuthModal';
 import { Student, Company } from './types';
 
 const MainAppContent: React.FC = () => {
@@ -151,12 +153,19 @@ const MainAppContent: React.FC = () => {
               <ImportEnginePage onNavigateTab={(tab) => setCurrentTab(tab)} />
             )}
 
+            {currentTab === 'admin' && (
+              <AdminPanelPage onNavigateTab={(tab) => setCurrentTab(tab)} />
+            )}
+
             {currentTab === 'audit' && <AuditLogsPage />}
 
             {currentTab === 'settings' && <SettingsPage />}
           </>
         )}
       </main>
+
+      {/* Google OAuth & Coordinator Authentication Modal */}
+      <AuthModal />
 
       {/* Global Quick Action Modal ("+" button) */}
       <QuickActionModal

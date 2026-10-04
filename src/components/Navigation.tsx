@@ -24,7 +24,9 @@ import {
   Menu,
   X,
   PhoneCall,
-  UserCircle2
+  UserCircle2,
+  ShieldCheck,
+  LogIn
 } from 'lucide-react';
 import { usePlaceComm } from '../context/PlaceCommContext';
 import { CURRENT_USERS } from '../data/mockData';
@@ -45,7 +47,9 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, setCurrentTa
     markAllNotificationsAsRead,
     openQuickAction,
     globalSearch,
-    setGlobalSearch
+    setGlobalSearch,
+    openAuthModal,
+    canAdmin
   } = usePlaceComm();
 
   const [showNotifications, setShowNotifications] = useState(false);
@@ -67,6 +71,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, setCurrentTa
     { id: 'analytics', label: 'Analytics & Insights', icon: BarChart3, section: 'Intelligence' },
     { id: 'reports', label: 'Reports Export', icon: FileSpreadsheet, section: 'Intelligence' },
     { id: 'imports', label: 'Excel Import Engine', icon: UploadCloud, section: 'Tools' },
+    { id: 'admin', label: 'Admin Panel (PC Roles)', icon: ShieldCheck, section: 'Tools' },
     { id: 'audit', label: 'Audit Trail', icon: History, section: 'Tools' },
     { id: 'settings', label: 'Settings & Policy', icon: Settings, section: 'Tools' }
   ];
@@ -204,54 +209,118 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, setCurrentTa
             )}
           </div>
 
-          {/* User Persona Switcher */}
-          <div className="relative">
-            <button
-              onClick={() => {
-                setShowUserMenu(!showUserMenu);
-                setShowNotifications(false);
-              }}
-              className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-md hover:bg-slate-800 transition-colors text-left"
-            >
-              <div className="w-7 h-7 rounded-full bg-blue-700 border border-blue-500 flex items-center justify-center text-xs font-semibold text-white">
-                {currentUser.name.charAt(0)}
-              </div>
-              <div className="hidden xl:block">
-                <p className="text-xs font-medium text-slate-100 truncate max-w-[110px] leading-none">{currentUser.name}</p>
-                <p className="text-[10px] text-blue-300 capitalize leading-none mt-1">
-                  {currentUser.role.replace('_', ' ').toLowerCase()}
-                </p>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-            </button>
-
-            {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-lg shadow-xl text-slate-900 z-50 p-2">
-                <div className="px-3 py-2 border-b border-slate-100">
-                  <p className="text-xs font-semibold text-slate-900">{currentUser.name}</p>
-                  <p className="text-[11px] text-slate-500">{currentUser.email}</p>
-                  <span className="inline-block mt-1 text-[10px] uppercase font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
-                    {currentUser.role.replace('_', ' ')}
-                  </span>
-                </div>
-                <div className="py-1">
-                  <p className="text-[11px] font-medium text-slate-400 px-3 py-1 uppercase tracking-wider">Switch Persona</p>
-                  {CURRENT_USERS.map(u => (
-                    <button
-                      key={u.id}
-                      onClick={() => {
-                        setCurrentUser(u);
-                        setShowUserMenu(false);
-                      }}
-                      className={`w-full text-left px-3 py-1.5 text-xs rounded hover:bg-slate-100 flex items-center justify-between ${currentUser.id === u.id ? 'bg-blue-50 text-blue-800 font-semibold' : 'text-slate-700'}`}
-                    >
-                      <span className="truncate">{u.name}</span>
-                      <span className="text-[10px] text-slate-400 ml-2">{u.role.split('_')[0]}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+          {/* Google Sign In Quick Action / User Persona Switcher */}
+          <div className="flex items-center gap-2">
+            {!currentUser.isGoogleLinked && (
+              <button
+                onClick={openAuthModal}
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-800 text-xs font-semibold rounded-md shadow-xs transition-colors"
+                title="Connect with Google OAuth"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3h3.88c2.27-2.09 3.66-5.17 3.66-9.09z" />
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.1C3.27 21.46 7.37 24 12 24z" />
+                  <path fill="#FBBC05" d="M5.28 14.32c-.25-.72-.38-1.49-.38-2.32s.13-1.6.38-2.32V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.1z" />
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.37 0 3.27 2.54 1.25 6.58l4.03 3.1c.95-2.83 3.6-4.93 6.72-4.93z" />
+                </svg>
+                <span>Google Sign-In</span>
+              </button>
             )}
+
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setShowUserMenu(!showUserMenu);
+                  setShowNotifications(false);
+                }}
+                className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-md hover:bg-slate-800 transition-colors text-left"
+              >
+                <div className="w-7 h-7 rounded-full bg-blue-700 border border-blue-500 flex items-center justify-center text-xs font-semibold text-white overflow-hidden">
+                  {currentUser.avatar ? (
+                    <img src={currentUser.avatar} alt={currentUser.name} className="w-full h-full object-cover" />
+                  ) : (
+                    currentUser.name.charAt(0)
+                  )}
+                </div>
+                <div className="hidden xl:block">
+                  <p className="text-xs font-medium text-slate-100 truncate max-w-[110px] leading-none">{currentUser.name}</p>
+                  <p className="text-[10px] text-blue-300 capitalize leading-none mt-1">
+                    {currentUser.pcRole || currentUser.role.replace('_', ' ').toLowerCase()}
+                  </p>
+                </div>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-68 bg-white border border-slate-200 rounded-lg shadow-xl text-slate-900 z-50 p-2 space-y-2">
+                  <div className="px-3 py-2 border-b border-slate-100">
+                    <p className="text-xs font-semibold text-slate-900">{currentUser.name}</p>
+                    <p className="text-[11px] text-slate-500">{currentUser.email}</p>
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <span className="inline-block text-[10px] uppercase font-bold text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                        {currentUser.pcRole || currentUser.role.replace('_', ' ')}
+                      </span>
+                      {currentUser.isGoogleLinked && (
+                        <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded flex items-center gap-0.5 border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>Google Linked</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    {/* Google OAuth Login Button */}
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        openAuthModal();
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-xs rounded hover:bg-slate-100 flex items-center gap-2 text-slate-700 font-medium"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3h3.88c2.27-2.09 3.66-5.17 3.66-9.09z" />
+                        <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.1C3.27 21.46 7.37 24 12 24z" />
+                        <path fill="#FBBC05" d="M5.28 14.32c-.25-.72-.38-1.49-.38-2.32s.13-1.6.38-2.32V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.1z" />
+                        <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.37 0 3.27 2.54 1.25 6.58l4.03 3.1c.95-2.83 3.6-4.93 6.72-4.93z" />
+                      </svg>
+                      <span>Google OAuth Sign-In / Register</span>
+                    </button>
+
+                    {/* Admin Panel Link */}
+                    {canAdmin && (
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          setCurrentTab('admin');
+                        }}
+                        className="w-full text-left px-3 py-1.5 text-xs rounded hover:bg-purple-50 text-purple-900 font-semibold flex items-center gap-2"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+                        <span>Manage PC Roles (Admin Panel)</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="pt-1 border-t border-slate-100">
+                    <p className="text-[10px] font-bold text-slate-400 px-3 py-1 uppercase tracking-wider">Switch Persona</p>
+                    {CURRENT_USERS.map(u => (
+                      <button
+                        key={u.id}
+                        onClick={() => {
+                          setCurrentUser(u);
+                          setShowUserMenu(false);
+                        }}
+                        className={`w-full text-left px-3 py-1.5 text-xs rounded hover:bg-slate-100 flex items-center justify-between ${currentUser.id === u.id ? 'bg-blue-50 text-blue-800 font-semibold' : 'text-slate-700'}`}
+                      >
+                        <span className="truncate">{u.name}</span>
+                        <span className="text-[10px] text-slate-500 ml-2">{u.pcRole || u.role.split('_')[0]}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>

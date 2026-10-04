@@ -1,14 +1,58 @@
 export type UserRole = 'SUPER_ADMIN' | 'PLACEMENT_COORDINATOR' | 'ADMIN' | 'VIEWER';
 
+export type PCRole = 
+  | 'Super Admin'
+  | 'Placement Secretary'
+  | 'Lead Coordinator'
+  | 'Sector Lead - Consulting'
+  | 'Sector Lead - BFSI'
+  | 'Sector Lead - Tech & Product'
+  | 'Sector Lead - FMCG & Trade'
+  | 'Senior Coordinator'
+  | 'Junior Coordinator';
+
+export interface CoordinatorPermissions {
+  canManageUsers: boolean;
+  canExportData: boolean;
+  canManageCompanies: boolean;
+  canModifyStudents: boolean;
+  canReleaseOffers: boolean;
+  canAccessAuditLogs: boolean;
+}
+
+export interface CoordinatorUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: PCRole;
+  systemRole: UserRole;
+  program: 'MBA-IB' | 'MBA-BA';
+  batch: '2024-26' | '2025-27';
+  sector: string;
+  assignedCompaniesCount: number;
+  status: 'Active' | 'Invited' | 'Suspended';
+  avatar?: string;
+  googleUid?: string;
+  isGoogleLinked?: boolean;
+  createdAt: string;
+  lastLogin?: string;
+  permissions: CoordinatorPermissions;
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
   role: UserRole;
+  pcRole?: PCRole;
   rollNumber?: string;
   phone?: string;
   avatar?: string;
   title?: string;
+  googleUid?: string;
+  isGoogleLinked?: boolean;
+  permissions?: CoordinatorPermissions;
 }
 
 export type ProgramType = 'MBA-IB' | 'MBA-BA';

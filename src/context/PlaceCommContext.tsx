@@ -15,7 +15,10 @@ import {
   UserRole,
   CompanyStatus,
   InterviewStatus,
-  InterviewResult
+  InterviewResult,
+  CoordinatorUser,
+  PCRole,
+  CoordinatorPermissions
 } from '../types';
 import {
   CURRENT_USERS,
@@ -28,8 +31,85 @@ import {
   INITIAL_OFFERS,
   INITIAL_FOLLOW_UPS,
   INITIAL_ACTIVITIES,
-  INITIAL_AUDIT_LOGS
+  INITIAL_AUDIT_LOGS,
+  INITIAL_COORDINATORS
 } from '../data/mockData';
+import { googleSignIn, googleSignUp, signOutUser } from '../lib/firebaseAuth';
+
+export const ROLE_PERMISSIONS_MAP: Record<PCRole, CoordinatorPermissions> = {
+  'Super Admin': {
+    canManageUsers: true,
+    canExportData: true,
+    canManageCompanies: true,
+    canModifyStudents: true,
+    canReleaseOffers: true,
+    canAccessAuditLogs: true
+  },
+  'Placement Secretary': {
+    canManageUsers: true,
+    canExportData: true,
+    canManageCompanies: true,
+    canModifyStudents: true,
+    canReleaseOffers: true,
+    canAccessAuditLogs: true
+  },
+  'Lead Coordinator': {
+    canManageUsers: false,
+    canExportData: true,
+    canManageCompanies: true,
+    canModifyStudents: true,
+    canReleaseOffers: true,
+    canAccessAuditLogs: true
+  },
+  'Sector Lead - Consulting': {
+    canManageUsers: false,
+    canExportData: true,
+    canManageCompanies: true,
+    canModifyStudents: true,
+    canReleaseOffers: false,
+    canAccessAuditLogs: true
+  },
+  'Sector Lead - BFSI': {
+    canManageUsers: false,
+    canExportData: true,
+    canManageCompanies: true,
+    canModifyStudents: true,
+    canReleaseOffers: false,
+    canAccessAuditLogs: true
+  },
+  'Sector Lead - Tech & Product': {
+    canManageUsers: false,
+    canExportData: true,
+    canManageCompanies: true,
+    canModifyStudents: true,
+    canReleaseOffers: false,
+    canAccessAuditLogs: true
+  },
+  'Sector Lead - FMCG & Trade': {
+    canManageUsers: false,
+    canExportData: true,
+    canManageCompanies: true,
+    canModifyStudents: true,
+    canReleaseOffers: false,
+    canAccessAuditLogs: true
+  },
+  'Senior Coordinator': {
+    canManageUsers: false,
+    canExportData: true,
+    canManageCompanies: true,
+    canModifyStudents: false,
+    canReleaseOffers: false,
+    canAccessAuditLogs: false
+  },
+  'Junior Coordinator': {
+    canManageUsers: false,
+    canExportData: false,
+    canManageCompanies: true,
+    canModifyStudents: false,
+    canReleaseOffers: false,
+    canAccessAuditLogs: false
+  }
+};
 
 interface PlaceCommContextType {
   // Current user & authentication
@@ -39,6 +119,24 @@ interface PlaceCommContextType {
   canAdmin: boolean;
   isSuperAdmin: boolean;
   isViewer: boolean;
+
+  // Placement Coordinator Management & RBAC
+  coordinators: CoordinatorUser[];
+  updateCoordinatorRole: (coordinatorId: string, role: PCRole) => void;
+  addCoordinator: (coordinator: Omit<CoordinatorUser, 'id' | 'createdAt' | 'assignedCompaniesCount'>) => CoordinatorUser;
+  updateCoordinator: (id: string, updates: Partial<CoordinatorUser>) => void;
+  deleteCoordinator: (id: string) => void;
+  toggleCoordinatorStatus: (id: string, status: 'Active' | 'Suspended') => void;
+
+  // Google OAuth & Auth Modals
+  loginWithGoogle: () => Promise<void>;
+  signUpWithGoogle: () => Promise<void>;
+  logoutUser: () => Promise<void>;
+  loginWithPersona: (user: User) => void;
+  isAuthModalOpen: boolean;
+  openAuthModal: () => void;
+  closeAuthModal: () => void;
+  authError: string | null;
 
   // Master entities
   students: Student[];
@@ -219,6 +317,14 @@ export const PlaceCommProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [globalSearch, setGlobalSearch] = useState<string>('');
 
   // Persist state to localStorage on changes
+  const [coordinators, setCoordinators] = useState<CoordinatorUser[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_coordinators`);
+    return saved ? JSON.parse(saved) : INITIAL_COORDINATORS;
+  });
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
   useEffect(() => {
     try {
       localStorage.setItem(`${STORAGE_KEY}_students`, JSON.stringify(students));
@@ -231,16 +337,180 @@ export const PlaceCommProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       localStorage.setItem(`${STORAGE_KEY}_followups`, JSON.stringify(followUps));
       localStorage.setItem(`${STORAGE_KEY}_activities`, JSON.stringify(activities));
       localStorage.setItem(`${STORAGE_KEY}_audit`, JSON.stringify(auditLogs));
+      localStorage.setItem(`${STORAGE_KEY}_coordinators`, JSON.stringify(coordinators));
     } catch {
       // ignore storage quota issues
     }
-  }, [students, companies, hrContacts, drives, shortlists, interviews, offers, followUps, activities, auditLogs]);
+  }, [students, companies, hrContacts, drives, shortlists, interviews, offers, followUps, activities, auditLogs, coordinators]);
 
   // Permissions helpers
-  const isSuperAdmin = currentUser.role === 'SUPER_ADMIN';
-  const canAdmin = currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN';
-  const canEdit = currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'PLACEMENT_COORDINATOR' || currentUser.role === 'ADMIN';
+  const isSuperAdmin = currentUser.role === 'SUPER_ADMIN' || currentUser.pcRole === 'Super Admin';
+  const canAdmin = isSuperAdmin || currentUser.role === 'ADMIN' || currentUser.pcRole === 'Placement Secretary';
+  const canEdit = currentUser.role !== 'VIEWER';
   const isViewer = currentUser.role === 'VIEWER';
+
+  // Placement Coordinator Account Management
+  const updateCoordinatorRole = (coordinatorId: string, role: PCRole) => {
+    const permissions = ROLE_PERMISSIONS_MAP[role];
+    let newSystemRole: UserRole = 'PLACEMENT_COORDINATOR';
+    if (role === 'Super Admin') newSystemRole = 'SUPER_ADMIN';
+    else if (role === 'Placement Secretary') newSystemRole = 'ADMIN';
+
+    setCoordinators(prev => prev.map(c => {
+      if (c.id === coordinatorId) {
+        return {
+          ...c,
+          role,
+          systemRole: newSystemRole,
+          permissions
+        };
+      }
+      return c;
+    }));
+
+    if (currentUser.id === coordinatorId) {
+      setCurrentUser(prev => ({
+        ...prev,
+        role: newSystemRole,
+        pcRole: role,
+        title: role,
+        permissions
+      }));
+    }
+
+    addAuditLog(
+      'UPDATE_COORDINATOR_ROLE',
+      'Coordinator',
+      coordinatorId,
+      `Assigned role '${role}' to placement coordinator ID ${coordinatorId}`
+    );
+  };
+
+  const addCoordinator = (data: Omit<CoordinatorUser, 'id' | 'createdAt' | 'assignedCompaniesCount'>): CoordinatorUser => {
+    const id = `user-${Date.now()}`;
+    const newCoord: CoordinatorUser = {
+      ...data,
+      id,
+      assignedCompaniesCount: 0,
+      createdAt: new Date().toISOString(),
+      permissions: data.permissions || ROLE_PERMISSIONS_MAP[data.role]
+    };
+    setCoordinators(prev => [newCoord, ...prev]);
+    addAuditLog('CREATE_COORDINATOR', 'Coordinator', id, `Created coordinator account for ${newCoord.name} (${newCoord.email}) with role ${newCoord.role}`);
+    return newCoord;
+  };
+
+  const updateCoordinator = (id: string, updates: Partial<CoordinatorUser>) => {
+    setCoordinators(prev => prev.map(c => {
+      if (c.id === id) {
+        const updated = { ...c, ...updates };
+        if (updates.role && !updates.permissions) {
+          updated.permissions = ROLE_PERMISSIONS_MAP[updates.role];
+        }
+        return updated;
+      }
+      return c;
+    }));
+    addAuditLog('UPDATE_COORDINATOR', 'Coordinator', id, `Updated coordinator details for ID ${id}`);
+  };
+
+  const deleteCoordinator = (id: string) => {
+    setCoordinators(prev => prev.filter(c => c.id !== id));
+    addAuditLog('DELETE_COORDINATOR', 'Coordinator', id, `Removed coordinator account ID ${id}`);
+  };
+
+  const toggleCoordinatorStatus = (id: string, status: 'Active' | 'Suspended') => {
+    updateCoordinator(id, { status });
+    addAuditLog('STATUS_CHANGE_COORDINATOR', 'Coordinator', id, `Changed coordinator account status to ${status}`);
+  };
+
+  // Google OAuth Methods
+  const loginWithGoogle = async () => {
+    try {
+      setAuthError(null);
+      const res = await googleSignIn();
+      const existing = coordinators.find(c => c.email.toLowerCase() === res.email.toLowerCase());
+      
+      let coordUser: CoordinatorUser;
+      if (existing) {
+        coordUser = {
+          ...existing,
+          googleUid: res.uid,
+          isGoogleLinked: true,
+          avatar: res.photoURL || existing.avatar,
+          lastLogin: new Date().toISOString()
+        };
+        updateCoordinator(existing.id, coordUser);
+      } else {
+        coordUser = {
+          id: `user-${Date.now()}`,
+          name: res.displayName,
+          email: res.email,
+          phone: '+91 98000 00000',
+          role: 'Junior Coordinator',
+          systemRole: 'PLACEMENT_COORDINATOR',
+          program: 'MBA-IB',
+          batch: '2025-27',
+          sector: 'General Outreach',
+          assignedCompaniesCount: 0,
+          status: 'Active',
+          avatar: res.photoURL,
+          googleUid: res.uid,
+          isGoogleLinked: true,
+          createdAt: new Date().toISOString(),
+          lastLogin: new Date().toISOString(),
+          permissions: ROLE_PERMISSIONS_MAP['Junior Coordinator']
+        };
+        setCoordinators(prev => [coordUser, ...prev]);
+      }
+
+      setCurrentUser({
+        id: coordUser.id,
+        name: coordUser.name,
+        email: coordUser.email,
+        role: coordUser.systemRole,
+        pcRole: coordUser.role,
+        avatar: coordUser.avatar,
+        phone: coordUser.phone,
+        title: coordUser.role,
+        googleUid: res.uid,
+        isGoogleLinked: true,
+        permissions: coordUser.permissions
+      });
+
+      addAuditLog('GOOGLE_OAUTH_LOGIN', 'User', coordUser.id, `Coordinator ${coordUser.name} (${coordUser.email}) authenticated via Google OAuth`);
+      setIsAuthModalOpen(false);
+    } catch (err: any) {
+      console.error('Google Auth error:', err);
+      setAuthError(err.message || 'Google Sign-in failed. Please try again.');
+      throw err;
+    }
+  };
+
+  const signUpWithGoogle = async () => {
+    return loginWithGoogle();
+  };
+
+  const logoutUser = async () => {
+    try {
+      await signOutUser();
+    } catch (e) {
+      console.warn('Sign out warning:', e);
+    }
+    setCurrentUser(CURRENT_USERS[0]);
+    addAuditLog('USER_LOGOUT', 'User', currentUser.id, `Coordinator signed out`);
+  };
+
+  const loginWithPersona = (user: User) => {
+    setCurrentUser(user);
+    addAuditLog('SWITCH_PERSONA', 'User', user.id, `Switched persona to ${user.name}`);
+  };
+
+  const openAuthModal = () => setIsAuthModalOpen(true);
+  const closeAuthModal = () => {
+    setIsAuthModalOpen(false);
+    setAuthError(null);
+  };
 
   const addAuditLog = (action: string, entity: string, entityId: string, details: string) => {
     const newLog: AuditLog = {
@@ -948,6 +1218,20 @@ export const PlaceCommProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         canAdmin,
         isSuperAdmin,
         isViewer,
+        coordinators,
+        updateCoordinatorRole,
+        addCoordinator,
+        updateCoordinator,
+        deleteCoordinator,
+        toggleCoordinatorStatus,
+        loginWithGoogle,
+        signUpWithGoogle,
+        logoutUser,
+        loginWithPersona,
+        isAuthModalOpen,
+        openAuthModal,
+        closeAuthModal,
+        authError,
         students,
         companies,
         hrContacts,
