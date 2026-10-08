@@ -1,3 +1,6 @@
+#Demo From here : https://iift-placecomm-placement-committee-operations-sys.ai.studio
+
+
 #just a demo project for helping Placement team , its not real College management system, its just a **Demo MVP project created to showcase for Interview**
 
 A production-grade, centralized **Placement Committee Management System** built for the, replacing fragmented Excel sheets, WhatsApp updates, and manual email threads with a unified operational command center.
