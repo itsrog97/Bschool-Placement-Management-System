@@ -1,6 +1,6 @@
-# IIFT Delhi Placement Committee (PlaceComm) Management System #just a demo project for helping Placement team , its not real
+#just a demo project for helping Placement team , its not real College management system, its just a **Demo MVP project created to showcase for Interview**
 
-A production-grade, centralized **Placement Committee Management System** built for the **Indian Institute of Foreign Trade (IIFT), New Delhi**, replacing fragmented Excel sheets, WhatsApp updates, and manual email threads with a unified operational command center.
+A production-grade, centralized **Placement Committee Management System** built for the, replacing fragmented Excel sheets, WhatsApp updates, and manual email threads with a unified operational command center.
 
 ---
 
